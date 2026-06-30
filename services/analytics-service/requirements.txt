@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+clickhouse-connect
+sqlalchemy
+aiokafka
+pydantic
+pandas
+pytest
+httpx

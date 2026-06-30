@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+elasticsearch
+redis
+aiokafka
+pydantic
+pytest
+httpx

@@ -1,0 +1,18 @@
+server:
+  port: 8089
+
+spring:
+  application:
+    name: review-service
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/shopnow_review}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+order:
+  service:
+    url: ${ORDER_SERVICE_URL:http://localhost:8083}

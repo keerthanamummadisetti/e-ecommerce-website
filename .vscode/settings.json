@@ -1,0 +1,7 @@
+{
+  "python.analysis.extraPaths": [
+    "./services/analytics-service",
+    "./services/notification-service",
+    "./services/search-service"
+  ]
+}
