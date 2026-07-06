@@ -35,7 +35,7 @@ public class SecurityConfig {
             .cors(AbstractHttpConfigurer::disable) // Kong Gateway handles CORS in production
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/register", "/auth/login", "/auth/refresh").permitAll()
+                .requestMatchers("/auth/register", "/auth/login", "/auth/refresh", "/actuator/health").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/users/{id}").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/users/{id}").authenticated()

@@ -1,18 +1,25 @@
-# Stage 1: Build
-FROM python:3.12-alpine AS builder
+FROM python:3.12-slim AS builder
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Stage 2: Runtime
-FROM python:3.12-alpine
+FROM python:3.12-slim
 WORKDIR /app
-COPY --from=builder /root/.local /root/.local
-COPY . .
-ENV PATH=/root/.local/bin:$PATH
-# Run as non-root user
-RUN addgroup -S shopnow && adduser -S shopnow -G shopnow
+
+RUN groupadd -r shopnow && useradd -r -g shopnow shopnow
+
+COPY --from=builder --chown=shopnow:shopnow /opt/venv /opt/venv
+COPY --chown=shopnow:shopnow . .
+
+ENV PATH="/opt/venv/bin:$PATH"
+
 USER shopnow
+
 EXPOSE 8088
+
 ENV PORT=8088
+
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8088"]

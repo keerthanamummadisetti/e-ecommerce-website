@@ -1,9 +1,30 @@
 version: '3.8'
 
+# Unified Bridge Network for E-Commerce Platform communication
+networks:
+  ecommerce-network:
+    name: ecommerce-network
+    driver: bridge
+
+# Persistent volumes for databases and storage engines to ensure no data loss
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  elasticsearch_data:
+  minio_data:
+  clickhouse_data:
+
 services:
+  # =========================================================================
+  # 1. CORE DATABASES & INFRASTRUCTURE SERVICES
+  # =========================================================================
+
+  # MS-DB-01: PostgreSQL Database (User, Order, Payment, Inventory, Notification DBs)
   postgres:
     image: postgres:15-alpine
     container_name: shopnow-postgres
+    restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
@@ -14,40 +35,68 @@ services:
       - ./init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - shopnow-network
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
+  # MS-DB-02: MongoDB Database (Product and Review DBs)
   mongodb:
     image: mongo:7
     container_name: shopnow-mongodb
+    restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
-      - shopnow-network
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' --quiet"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
+  # MS-DB-03: Redis Cache (User sessions, Cart cache, Product discovery cache)
   redis:
     image: redis:7-alpine
     container_name: shopnow-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - shopnow-network
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
+  # MS-MQ-01: Apache ZooKeeper (Kafka Coordinator)
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: shopnow-zookeeper
+    restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     networks:
-      - shopnow-network
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 | grep Mode"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
+  # MS-MQ-02: Apache Kafka Broker (Event-Driven messaging bus)
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     container_name: shopnow-kafka
+    restart: unless-stopped
     ports:
       - "9092:9092"
     environment:
@@ -60,13 +109,22 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     networks:
-      - shopnow-network
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
+  # MS-DB-04: Elasticsearch (Catalog & Product Search Service)
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
     container_name: shopnow-elasticsearch
+    restart: unless-stopped
     ports:
       - "9200:9200"
     environment:
@@ -76,26 +134,18 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
-      - shopnow-network
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|status\":\"yellow\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  minio:
-    image: minio/minio
-    container_name: shopnow-minio
-    ports:
-      - "9000:9000"
-      - "9090:9090"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadminpassword
-    command: server /data --console-address ":9090"
-    volumes:
-      - minio_data:/data
-    networks:
-      - shopnow-network
-
+  # MS-DB-05: ClickHouse (High-performance analytics storage)
   clickhouse:
     image: clickhouse/clickhouse-server:23.8-alpine
     container_name: shopnow-clickhouse
+    restart: unless-stopped
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -106,17 +156,382 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     networks:
-      - shopnow-network
+      - ecommerce-network
+   # healthcheck:
+   #   test: ["CMD-SHELL", "wget --spider -q http://localhost:8123/ping || exit 1"]
+     # interval: 5s
+     # timeout: 5s
+     # retries: 5
 
-networks:
-  shopnow-network:
-    name: shopnow-network
-    driver: bridge
+  # MS-DB-06: MinIO Object Storage (Image Uploads & Assets hosting)
+  minio:
+    image: minio/minio
+    container_name: shopnow-minio
+    restart: unless-stopped
+    ports:
+      - "9001:9000"
+      - "9090:9090"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    command: server /data --console-address ":9090"
+    volumes:
+      - minio_data:/data
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-volumes:
-  postgres_data:
-  mongodb_data:
-  redis_data:
-  elasticsearch_data:
-  minio_data:
-  clickhouse_data:
+
+  # =========================================================================
+  # 2. BACKEND MICROSERVICES (MS-01 to MS-10)
+  # =========================================================================
+
+  # MS-01: User & Authentication Service
+  user-service:
+    build:
+      context: ../services/user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shopnow_user
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      JWT_SECRET: superSecuredAndReallyLongSecretKeyForShopNowJWTTokenValidation2026
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MS-02: Product Catalog Service
+  product-service:
+    build:
+      context: ../services/product-service
+      dockerfile: Dockerfile
+    container_name: product-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: 8082
+      MONGO_URI: mongodb://mongodb:27017/shopnow_product
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:29092
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # MS-03: Order Management Service
+  order-service:
+    build:
+      context: ../services/order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shopnow_order
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      INVENTORY_SERVICE_URL: http://inventory-service:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MS-04: Payment Processing Service
+  payment-service:
+    build:
+      context: ../services/payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      PORT: 8084
+      SPRING_DATASOURCE_URL: postgresql://postgres:postgrespassword@postgres:5432/shopnow_payment
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8084/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # MS-05: Inventory Service
+  inventory-service:
+    build:
+      context: ../services/inventory-service
+      dockerfile: Dockerfile
+    container_name: inventory-service
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shopnow_inventory
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgrespassword
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8085/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MS-06: Shopping Cart Service
+  cart-service:
+    build:
+      context: ../services/cart-service
+      dockerfile: Dockerfile
+    container_name: cart-service
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      PORT: 8086
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:29092
+      PRODUCT_SERVICE_URL: http://product-service:8082
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8086/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # MS-07: Notification Service
+  notification-service:
+    build:
+      context: ../services/notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    restart: unless-stopped
+    ports:
+      - "8087:8087"
+    environment:
+      PORT: 8087
+      SPRING_DATASOURCE_URL: postgresql://postgres:postgrespassword@postgres:5432/shopnow_notification
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8087/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # MS-08: Search & Discovery Service
+  search-service:
+    build:
+      context: ../services/search-service
+      dockerfile: Dockerfile
+    container_name: search-service
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      PORT: 8088
+      KAFKA_BROKERS: kafka:29092
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - elasticsearch
+      - redis
+      - kafka
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8088')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # MS-09: Customer Review & Rating Service
+  review-service:
+    build:
+      context: ../services/review-service
+      dockerfile: Dockerfile
+    container_name: review-service
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/shopnow_review
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ORDER_SERVICE_URL: http://order-service:8083
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8089/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MS-10: Sales & Funnel Analytics Service
+  analytics-service:
+    build:
+      context: ../services/analytics-service
+      dockerfile: Dockerfile
+    container_name: analytics-service
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      PORT: 8090
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_USER: clickhouse_user
+      CLICKHOUSE_PASSWORD: clickhousepassword
+      CLICKHOUSE_DB: shopnow_analytics
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      - clickhouse
+      - kafka
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8090')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+
+  # =========================================================================
+  # 3. GATEWAY & FRONTEND WEB-APP
+  # =========================================================================
+
+  # Frontend React Single Page Web Application
+  web-app:
+    build:
+      context: ../web-app
+      dockerfile: Dockerfile
+    container_name: web-app
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+  #  healthcheck:
+    #  test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/ || exit 1"]
+    #  interval: 10s
+    #  timeout: 5s
+    #  retries: 5
+
+  # API Gateway Nginx Reverse Proxy
+  api-gateway:
+    build:
+      context: ../api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+      - payment-service
+      - inventory-service
+      - cart-service
+      - notification-service
+      - search-service
+      - review-service
+      - analytics-service
+      - web-app
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
