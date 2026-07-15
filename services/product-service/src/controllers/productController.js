@@ -8,32 +8,72 @@ const getProductDetailKey = (id) => `product:detail:${id}`;
 const getProductFeaturedKey = () => 'product:featured';
 const CACHE_TTL = 600; // 10 minutes
 
-// 1. Get Products list (with cursor-based pagination)
+// 1. Get Products list (with cursor-based or page-based pagination, filters, and sorting)
 const getProducts = async (req, res) => {
   try {
-    const { category, minPrice, maxPrice, inStock, limit = 10, cursor } = req.query;
+    const { category, minPrice, maxPrice, minRating, inStock, limit = 10, cursor, page, sort } = req.query;
     
     const query = {};
     if (category) query.category = category;
+    
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
+    
+    if (minRating) {
+      query.averageRating = { $gte: Number(minRating) };
+    }
+    
     if (inStock === 'true') {
       query.stock = { $gt: 0 };
     }
 
-    // Cursor pagination: _id greater than the cursor ID
+    // Determine sorting criteria
+    let sortQuery = { _id: 1 }; // default sort
+    if (sort === 'price_asc') {
+      sortQuery = { price: 1, _id: 1 };
+    } else if (sort === 'price_desc') {
+      sortQuery = { price: -1, _id: 1 };
+    } else if (sort === 'rating_desc') {
+      sortQuery = { averageRating: -1, _id: 1 };
+    } else if (sort === 'newest') {
+      sortQuery = { createdAt: -1, _id: 1 };
+    }
+
+    const pageSize = Number(limit);
+
+    // If page parameter is supplied, use page-based pagination
+    if (page) {
+      const currentPage = Math.max(1, Number(page));
+      const totalItems = await Product.countDocuments(query);
+      const totalPages = Math.ceil(totalItems / pageSize);
+      const skip = (currentPage - 1) * pageSize;
+
+      const products = await Product.find(query)
+        .sort(sortQuery)
+        .skip(skip)
+        .limit(pageSize);
+
+      return res.json({
+        products,
+        currentPage,
+        totalPages,
+        totalItems,
+        hasNextPage: currentPage < totalPages
+      });
+    }
+
+    // Default: Cursor-based pagination (fully backward compatible)
     if (cursor) {
       query._id = { $gt: cursor };
     }
 
-    const pageSize = Number(limit);
-    // Find products, sort by _id ascending
+    // Find products with cursor pagination limit + 1
     const products = await Product.find(query)
-      .sort({ _id: 1 })
-      .limit(pageSize + 1); // Get 1 extra item to check if there is a next page
+      .sort(sortQuery)
+      .limit(pageSize + 1);
 
     const hasNextPage = products.length > pageSize;
     if (hasNextPage) {

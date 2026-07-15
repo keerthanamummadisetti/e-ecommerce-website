@@ -40,6 +40,31 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{id}/addresses")
+    public ResponseEntity<java.util.List<com.shopnow.userservice.model.Address>> getAddresses(@PathVariable UUID id) {
+        validateSelfOrAdmin(id);
+        return ResponseEntity.ok(userService.getUserAddresses(id));
+    }
+
+    @PostMapping("/{id}/addresses")
+    public ResponseEntity<com.shopnow.userservice.model.Address> addAddress(@PathVariable UUID id, @RequestBody com.shopnow.userservice.model.Address address) {
+        validateSelfOrAdmin(id);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(userService.addAddress(id, address));
+    }
+
+    @DeleteMapping("/{id}/addresses/{addressId}")
+    public ResponseEntity<Void> deleteAddress(@PathVariable UUID id, @PathVariable UUID addressId) {
+        validateSelfOrAdmin(id);
+        userService.deleteAddress(id, addressId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/orders")
+    public ResponseEntity<java.util.List<Object>> getOrderHistory(@PathVariable UUID id) {
+        validateSelfOrAdmin(id);
+        return ResponseEntity.ok(userService.getOrderHistory(id));
+    }
+
     private void validateSelfOrAdmin(UUID targetUserId) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {

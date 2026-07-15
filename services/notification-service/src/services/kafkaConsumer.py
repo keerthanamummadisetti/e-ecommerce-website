@@ -89,6 +89,8 @@ async def consume_events():
                             user_id=user_id,
                             event_type=event_type,
                             user_email=email,
+                            template_name="email_order_confirmed.html",
+                            template_data={"order_id": order_id, "estimated_delivery": est_del},
                             sms_text=sms_text,
                             user_phone="+919876543210"
                         )
@@ -104,8 +106,40 @@ async def consume_events():
                             user_id=user_id,
                             event_type=event_type,
                             user_email=email,
+                            template_name="email_order_cancelled.html",
+                            template_data={"order_id": order_id, "reason": reason},
                             sms_text=sms_text,
                             user_phone="+919876543210"
+                        )
+
+                    elif event_type == "payment.success":
+                        payment_id = data.get("paymentId")
+                        order_id = data.get("orderId")
+                        amount = data.get("amount")
+                        user_id = data.get("userId", "usr_payment_success")
+                        email = f"user_payment@example.com"
+                        dispatch_notification(
+                            db=db,
+                            user_id=user_id,
+                            event_type=event_type,
+                            user_email=email,
+                            template_name="email_payment_success.html",
+                            template_data={"order_id": order_id, "payment_id": payment_id, "amount": amount}
+                        )
+
+                    elif event_type == "payment.failed":
+                        payment_id = data.get("paymentId")
+                        order_id = data.get("orderId")
+                        reason = data.get("reason", "Card declined")
+                        user_id = data.get("userId", "usr_payment_failed")
+                        email = f"user_payment@example.com"
+                        dispatch_notification(
+                            db=db,
+                            user_id=user_id,
+                            event_type=event_type,
+                            user_email=email,
+                            template_name="email_payment_failed.html",
+                            template_data={"order_id": order_id, "reason": reason}
                         )
                     
                     elif event_type == "inventory.low_stock":

@@ -25,10 +25,15 @@ app.put('/mock-upload/:key', (req, res) => {
   res.status(200).send({ message: 'Mock upload successful' });
 });
 
+const { startReviewConsumer } = require('./services/kafkaConsumer');
+
 const startServer = async () => {
   await connectDB();
   await connectRedis();
   await connectKafka();
+  
+  // Start the Kafka review listener in the background
+  startReviewConsumer().catch(err => console.error('Kafka Review Consumer Error:', err));
 
   app.listen(PORT, () => {
     console.log(`Product Catalogue Service listening on port ${PORT}`);

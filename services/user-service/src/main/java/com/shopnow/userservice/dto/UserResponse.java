@@ -15,6 +15,7 @@ public class UserResponse {
     private Role role;
     private boolean isVerified;
     private boolean isActive;
+    private java.util.List<com.shopnow.userservice.model.Address> addresses = new java.util.ArrayList<>();
 
     public UserResponse() {}
 
@@ -29,7 +30,17 @@ public class UserResponse {
         this.isActive = user.isActive();
     }
 
+    public UserResponse(User user, java.util.List<com.shopnow.userservice.model.Address> addresses) {
+        this(user);
+        if (addresses != null) {
+            this.addresses = addresses;
+        }
+    }
+
     // Getters and Setters
+    public java.util.List<com.shopnow.userservice.model.Address> getAddresses() { return addresses; }
+    public void setAddresses(java.util.List<com.shopnow.userservice.model.Address> addresses) { this.addresses = addresses; }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 

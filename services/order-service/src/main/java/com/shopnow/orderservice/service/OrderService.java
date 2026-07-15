@@ -57,6 +57,11 @@ public class OrderService {
         }
 
         Order order = new Order();
+        if (request.getOrderId() != null) {
+            order.setId(request.getOrderId());
+        } else {
+            order.setId(UUID.randomUUID());
+        }
         order.setUserId(request.getUserId());
         order.setStatus(OrderStatus.PENDING);
         order.setTotalAmount(request.getTotalAmount());

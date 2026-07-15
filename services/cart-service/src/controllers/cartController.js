@@ -189,6 +189,7 @@ const mergeCart = async (req, res) => {
 const checkout = async (req, res) => {
   const { userId } = req.params;
   const { couponCode, shippingAddress } = req.body;
+  const crypto = require('crypto');
 
   if (!shippingAddress) {
     return res.status(400).json({ error: 'BAD_REQUEST', message: 'shippingAddress is required.' });
@@ -199,6 +200,9 @@ const checkout = async (req, res) => {
     if (cart.items.length === 0) {
       return res.status(400).json({ error: 'EMPTY_CART', message: 'Cart is empty. Cannot checkout.' });
     }
+
+    // Pre-generate orderId as Saga correlation transaction ID
+    const orderId = crypto.randomUUID();
 
     // Calculate subtotal
     let subtotal = 0;
@@ -212,6 +216,12 @@ const checkout = async (req, res) => {
       discount = subtotal * 0.10;
     } else if (couponCode === 'SAVE20') {
       discount = subtotal * 0.20;
+    } else if (couponCode === 'WELCOME50') {
+      discount = subtotal * 0.50;
+    } else if (couponCode === 'BIGBILLION') {
+      discount = subtotal * 0.30;
+    } else if (couponCode === 'FREESHIP') {
+      discount = 50.00; // Rs 50 flat discount for free shipping
     }
 
     const totalAmount = Math.max(0, subtotal - discount);
@@ -225,6 +235,7 @@ const checkout = async (req, res) => {
       time: new Date().toISOString(),
       datacontenttype: 'application/json',
       data: {
+        orderId,
         cartId: `cart-${userId}-${Date.now()}`,
         userId,
         items: cart.items.map(item => ({
@@ -262,6 +273,7 @@ const checkout = async (req, res) => {
     res.json({
       status: 'CHECKOUT_INITIATED',
       message: 'Checkout process has been initiated. Order is being processed.',
+      orderId,
       checkoutDetails: event.data
     });
 

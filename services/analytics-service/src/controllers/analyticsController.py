@@ -126,7 +126,6 @@ def get_revenue_summary():
 # 5. GET Funnel Analysis (cart add -> checkout -> payment conversion rates)
 @router.get("/funnel")
 def get_funnel_analysis():
-    # Cart add is simulated, but we have com.shopnow.cart.checkout_initiated
     # Funnel steps:
     # 1. Checkout Initiated (com.shopnow.cart.checkout_initiated)
     # 2. Order Created (com.shopnow.order.created)
@@ -137,8 +136,19 @@ def get_funnel_analysis():
         "com.shopnow.payment.success"
     ])
 
+    # Calculate total revenue from successful payments
+    df_payment = get_event_dataframe(["com.shopnow.payment.success"])
+    total_revenue = float(df_payment["amount"].sum()) if not df_payment.empty else 0.0
+
     if df.empty:
-        return {"checkoutInitiated": 0, "orderCreated": 0, "paymentSuccess": 0, "checkoutToOrderRate": 0.0, "orderToPaymentRate": 0.0}
+        return {
+            "checkoutInitiated": 0,
+            "orderCreated": 0,
+            "paymentSuccess": 0,
+            "checkoutToOrderRate": 0.0,
+            "orderToPaymentRate": 0.0,
+            "totalRevenue": 0.0
+        }
 
     checkouts = int((df["event_type"] == "com.shopnow.cart.checkout_initiated").sum())
     orders = int((df["event_type"] == "com.shopnow.order.created").sum())
@@ -152,7 +162,8 @@ def get_funnel_analysis():
         "orderCreated": orders,
         "paymentSuccess": payments,
         "checkoutToOrderRate": round(checkout_to_order, 2),
-        "orderToPaymentRate": round(order_to_payment, 2)
+        "orderToPaymentRate": round(order_to_payment, 2),
+        "totalRevenue": round(total_revenue, 2)
     }
 
 # 6. POST Export Reports

@@ -17,20 +17,32 @@ import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.shopnow.userservice.model.Address;
+import com.shopnow.userservice.repository.AddressRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestTemplate;
+import java.util.List;
+
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
+    private final AddressRepository addressRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${order.service.url:http://localhost:8083}")
+    private String orderServiceUrl;
 
     // Resilient fallback storage when Redis is unavailable during local execution
     private final ConcurrentHashMap<String, String> localTokenStore = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Integer> localRateLimiter = new ConcurrentHashMap<>();
 
-    public UserService(UserRepository userRepository, JwtUtil jwtUtil, RedisTemplate<String, Object> redisTemplate) {
+    public UserService(UserRepository userRepository, AddressRepository addressRepository, JwtUtil jwtUtil, RedisTemplate<String, Object> redisTemplate) {
         this.userRepository = userRepository;
+        this.addressRepository = addressRepository;
         this.passwordEncoder = new BCryptPasswordEncoder(12); // Strength 12 as requested
         this.jwtUtil = jwtUtil;
         this.redisTemplate = redisTemplate;
@@ -120,7 +132,8 @@ public class UserService {
     public UserResponse getUserProfile(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("USER_NOT_FOUND"));
-        return new UserResponse(user);
+        List<Address> addresses = addressRepository.findByUserId(id);
+        return new UserResponse(user, addresses);
     }
 
     public UserResponse updateUserProfile(UUID id, RegisterRequest request) {
@@ -133,7 +146,8 @@ public class UserService {
             user.setPhone(request.getPhone());
         }
         User saved = userRepository.save(user);
-        return new UserResponse(saved);
+        List<Address> addresses = addressRepository.findByUserId(id);
+        return new UserResponse(saved, addresses);
     }
 
     public void deleteUser(UUID id) {
@@ -141,6 +155,51 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("USER_NOT_FOUND"));
         user.setActive(false); // soft delete
         userRepository.save(user);
+    }
+
+    // --- Address management methods ---
+
+    public List<Address> getUserAddresses(UUID userId) {
+        return addressRepository.findByUserId(userId);
+    }
+
+    @Transactional
+    public Address addAddress(UUID userId, Address address) {
+        address.setUserId(userId);
+        if (address.isDefault()) {
+            // Unset previous defaults
+            List<Address> defaults = addressRepository.findByUserIdAndIsDefault(userId, true);
+            for (Address d : defaults) {
+                d.setDefault(false);
+                addressRepository.save(d);
+            }
+        }
+        return addressRepository.save(address);
+    }
+
+    @Transactional
+    public void deleteAddress(UUID userId, UUID addressId) {
+        Address addr = addressRepository.findById(addressId)
+                .orElseThrow(() -> new IllegalArgumentException("ADDRESS_NOT_FOUND"));
+        if (!addr.getUserId().equals(userId)) {
+            throw new SecurityException("ACCESS_DENIED");
+        }
+        addressRepository.delete(addr);
+    }
+
+    // --- Order History aggregation method ---
+
+    public List<Object> getOrderHistory(UUID userId) {
+        String url = orderServiceUrl + "/orders/user/" + userId.toString();
+        try {
+            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return response.getBody();
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to fetch order history from Order Service: " + e.getMessage());
+        }
+        return List.of(); // Return empty list on failure / sandbox run
     }
 
     // --- Redis/Local helpers ---

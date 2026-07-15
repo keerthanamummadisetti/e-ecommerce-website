@@ -52,6 +52,8 @@ async def consume_events():
                         "stock": int(data.get("stock", 0)),
                         "description": data.get("description", ""),
                         "isFeatured": data.get("isFeatured", False),
+                        "averageRating": float(data.get("averageRating", 0.0)),
+                        "reviewCount": int(data.get("reviewCount", 0)),
                         "attributes": data.get("attributes", {}),
                         "suggest": {
                             "input": [data.get("name"), data.get("category")]

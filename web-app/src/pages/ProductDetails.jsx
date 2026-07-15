@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { ShoppingCart, ArrowLeft, Star, Heart, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Star, CheckCircle2 } from 'lucide-react';
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -172,7 +172,7 @@ export default function ProductDetails() {
           </div>
 
           <h2 style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            ${product.price ? product.price.toFixed(2) : '0.00'}
+            ₹{product.price ? product.price.toLocaleString('en-IN') : '0.00'}
           </h2>
 
           <p style={{ fontSize: '16px', color: 'var(--text-secondary)' }}>{product.description}</p>

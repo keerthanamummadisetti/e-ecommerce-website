@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { HelpCircle, Package, MapPin, CheckCircle, ArrowRight } from 'lucide-react';
 
@@ -120,7 +121,7 @@ export default function Orders() {
                   </div>
                   <div>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>TOTAL VALUE</span>
-                    <h4 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>${order.totalAmount.toFixed(2)}</h4>
+                    <h4 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>₹{order.totalAmount.toLocaleString('en-IN')}</h4>
                   </div>
                   <div>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>SHIPPING ADDRESS</span>
@@ -212,7 +213,7 @@ export default function Orders() {
                           <span style={{ fontWeight: 600 }}>{item.name}</span>
                           <span style={{ color: 'var(--text-muted)' }}>x{item.quantity}</span>
                         </span>
-                        <span style={{ fontWeight: 700 }}>${(item.price * item.quantity).toFixed(2)}</span>
+                        <span style={{ fontWeight: 700 }}>₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
                       </div>
                     ))}
                   </div>

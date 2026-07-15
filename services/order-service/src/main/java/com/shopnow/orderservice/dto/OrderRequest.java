@@ -26,7 +26,12 @@ public class OrderRequest {
     @NotBlank(message = "Idempotency key is required")
     private String idempotencyKey;
 
+    private UUID orderId;
+
     // Getters and Setters
+    public UUID getOrderId() { return orderId; }
+    public void setOrderId(UUID orderId) { this.orderId = orderId; }
+
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) { this.userId = userId; }
 

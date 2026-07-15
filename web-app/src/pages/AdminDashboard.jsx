@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   
   // Mock Analytics state
   const [analyticsData, setAnalyticsData] = useState({
-    totalSales: 24590.80,
+    totalSales: 2459080.00,
     totalOrders: 148,
     conversionRate: 68.5,
     lowStockCount: 2
@@ -293,7 +293,7 @@ export default function AdminDashboard() {
                 <span style={{ fontSize: '13px', fontWeight: 600 }}>TOTAL REVENUE</span>
                 <TrendingUp size={18} style={{ color: 'var(--success)' }} />
               </div>
-              <h2 style={{ fontSize: '28px', fontWeight: 800 }}>${analyticsData.totalSales.toFixed(2)}</h2>
+              <h2 style={{ fontSize: '28px', fontWeight: 800 }}>₹{analyticsData.totalSales.toLocaleString('en-IN')}</h2>
               <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                 <ArrowUpRight size={12} /> +12.4% vs last week
               </span>
@@ -368,8 +368,8 @@ export default function AdminDashboard() {
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Price ($ USD)</label>
-                  <input type="number" step="0.01" required placeholder="19.99" className="glass-input" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Price (₹ INR)</label>
+                  <input type="number" step="1" required placeholder="1500" className="glass-input" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
                 </div>
               </div>
 
@@ -415,7 +415,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700 }}>${prod.price.toFixed(2)}</span>
+                    <span style={{ fontWeight: 700 }}>₹{prod.price.toLocaleString('en-IN')}</span>
                     <span style={{ fontSize: '13px', color: prod.stock <= 5 ? 'var(--danger)' : 'var(--text-muted)' }}>Stock: {prod.stock}</span>
                     <button 
                       onClick={() => handleDeleteProduct(prod.productId || prod.id)}
@@ -503,7 +503,7 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>TOTAL VALUE</span>
-                      <p style={{ fontSize: '14px', fontWeight: 700 }}>${order.totalAmount.toFixed(2)}</p>
+                      <p style={{ fontSize: '14px', fontWeight: 700 }}>₹{order.totalAmount.toLocaleString('en-IN')}</p>
                     </div>
                     <div>
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CURRENT STATE</span>

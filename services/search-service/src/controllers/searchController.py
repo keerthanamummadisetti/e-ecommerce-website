@@ -12,12 +12,16 @@ async def search_products(
     category: str = Query(None),
     minPrice: float = Query(None),
     maxPrice: float = Query(None),
+    minRating: float = Query(None),
+    inStock: bool = Query(None),
+    page: int = Query(1),
+    limit: int = Query(10),
     sort: str = Query("relevance")
 ):
     redis = get_redis_client()
     
     # 1. Construct Cache Key
-    cache_key = f"search:q:{q}:cat:{category}:min:{minPrice}:max:{maxPrice}:sort:{sort}"
+    cache_key = f"search:q:{q}:cat:{category}:min:{minPrice}:max:{maxPrice}:rating:{minRating}:stock:{inStock}:page:{page}:limit:{limit}:sort:{sort}"
     try:
         cached_result = await redis.get(cache_key)
         if cached_result:
@@ -50,16 +54,31 @@ async def search_products(
             price_range["lte"] = maxPrice
         es_query["bool"]["filter"].append({"range": {"price": price_range}})
 
+    if minRating is not None:
+        es_query["bool"]["filter"].append({"range": {"averageRating": {"gte": minRating}}})
+
+    if inStock is not None:
+        if inStock:
+            es_query["bool"]["filter"].append({"range": {"stock": {"gt": 0}}})
+        else:
+            es_query["bool"]["filter"].append({"term": {"stock": 0}})
+
     # Sorting
     sort_body = []
     if sort == "price_asc":
         sort_body.append({"price": "asc"})
     elif sort == "price_desc":
         sort_body.append({"price": "desc"})
+    elif sort == "rating_desc":
+        sort_body.append({"averageRating": "desc"})
+    elif sort == "newest":
+        sort_body.append({"createdAt": "desc"})
     else:
         sort_body.append({"_score": "desc"})
 
     body = {
+        "from": (page - 1) * limit,
+        "size": limit,
         "query": es_query,
         "sort": sort_body,
         "aggs": {
@@ -92,6 +111,8 @@ async def search_products(
     result = {
         "products": products,
         "total": res["hits"]["total"]["value"] if isinstance(res["hits"]["total"], dict) else res["hits"]["total"],
+        "currentPage": page,
+        "limit": limit,
         "facets": facets
     }
 

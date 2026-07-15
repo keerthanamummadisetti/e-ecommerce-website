@@ -21,26 +21,18 @@ export default function Header() {
 
   return (
     <header className="glass-header">
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
+      <div className="container header-container">
         
         {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ 
-            fontFamily: 'var(--font-display)', 
-            fontWeight: 800, 
-            fontSize: '24px', 
-            background: 'linear-gradient(135deg, var(--secondary), var(--primary))',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            letterSpacing: '-0.5px'
-          }}>
+        <Link to="/" className="header-logo-link">
+          <span className="header-logo-text">
             ShopNow
           </span>
           <span className="badge badge-primary" style={{ fontSize: '10px', padding: '2px 6px' }}>v1.0</span>
         </Link>
 
         {/* Search Bar */}
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flex: 1, maxWidth: '400px', margin: '0 24px', position: 'relative' }}>
+        <form onSubmit={handleSearchSubmit} className="header-search-form">
           <input
             type="text"
             placeholder="Search products, brands, categories..."
@@ -53,7 +45,7 @@ export default function Header() {
         </form>
 
         {/* Navigation Actions */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <nav className="header-nav-actions">
           {/* System logs toggle */}
           <button 
             onClick={() => setShowLogs(!showLogs)} 

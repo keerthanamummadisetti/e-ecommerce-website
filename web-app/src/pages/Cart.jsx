@@ -16,7 +16,7 @@ export default function Cart() {
       const amt = cart.totalPrice * 0.1;
       setDiscount(amt);
       setCouponApplied(true);
-      addLog(`Applied coupon code SAVE10. Computed 10% discount: $${amt.toFixed(2)}`, 'MS-06 Shopping Cart');
+      addLog(`Applied coupon code SAVE10. Computed 10% discount: ₹${amt.toLocaleString('en-IN')}`, 'MS-06 Shopping Cart');
     } else {
       addLog(`Invalid coupon code attempted: ${couponCode}`, 'MS-06 Shopping Cart');
       alert('Invalid coupon code. Try SAVE10');
@@ -24,7 +24,7 @@ export default function Cart() {
   };
 
   const totalCartCount = cart.items ? cart.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
-  const shippingFee = cart.totalPrice > 100 || cart.totalPrice === 0 ? 0 : 15.00;
+  const shippingFee = cart.totalPrice > 499 || cart.totalPrice === 0 ? 0 : 50.00;
   const tax = cart.totalPrice * 0.08;
   const finalTotal = cart.totalPrice - discount + shippingFee + tax;
 
@@ -63,7 +63,7 @@ export default function Cart() {
               <div style={{ flexGrow: 1, minWidth: '150px' }}>
                 <h4 style={{ fontSize: '16px', fontWeight: 600 }}>{item.name}</h4>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>SKU: <code style={{ fontSize: '11px' }}>{item.variantSku || 'default'}</code></p>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>${item.price.toFixed(2)}</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>₹{item.price.toLocaleString('en-IN')}</p>
               </div>
 
               {/* Counter quantity */}
@@ -84,8 +84,8 @@ export default function Cart() {
               </div>
 
               {/* Subtotal */}
-              <div style={{ fontWeight: 700, fontSize: '16px', width: '80px', textAlign: 'right' }}>
-                ${(item.price * item.quantity).toFixed(2)}
+              <div style={{ fontWeight: 700, fontSize: '16px', width: '90px', textAlign: 'right' }}>
+                ₹{(item.price * item.quantity).toLocaleString('en-IN')}
               </div>
 
               {/* Remove button */}
@@ -131,25 +131,25 @@ export default function Cart() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Items Subtotal</span>
-                <span>${cart.totalPrice.toFixed(2)}</span>
+                <span>₹{cart.totalPrice.toLocaleString('en-IN')}</span>
               </div>
               {discount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--success)' }}>
                   <span>Promo Coupon Discount</span>
-                  <span>-${discount.toFixed(2)}</span>
+                  <span>-₹{discount.toLocaleString('en-IN')}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Estimated Shipping</span>
-                <span>{shippingFee === 0 ? 'FREE' : `$${shippingFee.toFixed(2)}`}</span>
+                <span>{shippingFee === 0 ? 'FREE' : `₹${shippingFee.toLocaleString('en-IN')}`}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Estimated Sales Tax (8%)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>₹{tax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-glass)', paddingTop: '12px', fontSize: '18px', fontWeight: 700 }}>
                 <span>Grand Total</span>
-                <span style={{ color: 'var(--secondary)' }}>${finalTotal.toFixed(2)}</span>
+                <span style={{ color: 'var(--secondary)' }}>₹{finalTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
               </div>
             </div>
 

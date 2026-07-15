@@ -249,3 +249,94 @@ p {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Product Card Styling */
+.product-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-premium);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--border-focus);
+  box-shadow: 0 12px 30px -10px rgba(157, 78, 221, 0.3), 0 0 20px rgba(157, 78, 221, 0.1);
+}
+
+/* Category Scroll Container Custom Rules */
+.category-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+.category-scroll-container {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Responsive Header Styles */
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  gap: 16px;
+}
+.header-logo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.header-logo-text {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 24px;
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+.header-search-form {
+  display: flex;
+  flex: 1;
+  max-width: 400px;
+  margin: 0 24px;
+  position: relative;
+}
+.header-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    height: auto;
+    padding: 12px 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header-search-form {
+    order: 3;
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+  .header-nav-actions {
+    gap: 16px;
+  }
+}
+@media (max-width: 480px) {
+  .header-logo-text {
+    font-size: 20px;
+  }
+  .header-nav-actions {
+    gap: 10px;
+  }
+}

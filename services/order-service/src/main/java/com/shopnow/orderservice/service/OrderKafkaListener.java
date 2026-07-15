@@ -29,6 +29,9 @@ public class OrderKafkaListener {
             JsonNode dataNode = rootNode.get("data");
 
             OrderRequest request = new OrderRequest();
+            if (dataNode.has("orderId")) {
+                request.setOrderId(UUID.fromString(dataNode.get("orderId").asText()));
+            }
             request.setUserId(UUID.fromString(dataNode.get("userId").asText()));
             request.setTotalAmount(new BigDecimal(dataNode.get("totalAmount").asText()));
             request.setShippingAddr(dataNode.get("shippingAddress").asText());
